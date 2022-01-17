@@ -1,0 +1,22 @@
+sftp:
+  # unique host
+  # Open when debugging, used to view jsch logs
+  enabled-log: true
+  hosts:
+    host1:
+      host: localhost
+      port: 22
+      username: haibara
+      password: aptx4869
+    host2:
+      host: localhost
+      port: 22
+      username: haibara
+      password: aptx4869
+  pool:
+    min-idle: 1
+    max-idle: 4
+    max-active-per-key: 4
+    max-active: 8
+# Download to the local file storage directory
+download: /download
