@@ -25,6 +25,15 @@ class UniqueHostTests {
   private String downloadDir;
 
   @Test
+  void contextLoads() throws SftpException {
+    upload();
+    download();
+    exists();
+    list();
+    execute();
+    executeWithoutResult();
+  }
+
   void upload() throws SftpException {
     Path path = Paths.get(System.getProperty("user.dir"), "file");
     try {
@@ -42,7 +51,6 @@ class UniqueHostTests {
     }
   }
 
-  @Test
   void download() throws SftpException {
     Path path = Paths.get(downloadDir);
     try {
@@ -62,7 +70,6 @@ class UniqueHostTests {
     }
   }
 
-  @Test
   void exists() throws SftpException {
     // Test path /home/username/doc/aptx4869.pdf
     System.out.println(sftpTemplate.exists("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf"));
@@ -72,7 +79,6 @@ class UniqueHostTests {
     System.out.println(sftpTemplate.exists("aptx4869.docx"));
   }
 
-  @Test
   void list() throws SftpException {
     // view /home/username/doc/aptx4869.pdf
     sftpTemplate.list("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf");
@@ -86,13 +92,11 @@ class UniqueHostTests {
     sftpTemplate.list("doc");
   }
 
-  @Test
   void execute() throws SftpException {
     String home = sftpTemplate.execute(ChannelSftp::getHome);
     System.out.println(home);
   }
 
-  @Test
   void executeWithoutResult() throws SftpException {
     sftpTemplate.executeWithoutResult(channelSftp -> channelSftp.rm("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf"));
     sftpTemplate.executeWithoutResult(channelSftp -> channelSftp.rm("doc/aptx4869.doc"));

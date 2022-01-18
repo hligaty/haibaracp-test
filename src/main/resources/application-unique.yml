@@ -6,6 +6,7 @@ sftp:
   port: 22
   username: haibara
   password: aptx4869
+  timeout: 1000
   pool:
     min-idle: 1
     max-idle: 4

@@ -25,8 +25,17 @@ class MulitHostTests {
   @Value("${download}")
   private String downloadDir;
 
-
   @Test
+  void contextLoads() throws SftpException {
+    multiHost();
+    upload();
+    download();
+    exists();
+    list();
+    execute();
+    executeWithoutResult();
+  }
+
   void multiHost() throws SftpException {
     // view all host
     String hostInfo = String.join(",", HostHolder.hostNames());
@@ -71,13 +80,13 @@ class MulitHostTests {
     }
   }
 
-  @Test
   void upload() throws SftpException {
     Path path = Paths.get(System.getProperty("user.dir"), "file");
-    HostHolder.changeHost(HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null")), false);
+    String hostName = HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null"));
+    HostHolder.changeHost(hostName, false);
     try {
       // upload to /home/username/doc/aptx4869.pdf
-      sftpTemplate.upload(path.resolve("aptx4869.pdf").toString(), "/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf");
+      sftpTemplate.upload(path.resolve("aptx4869.pdf").toString(), "/home/" + clientProperties.getHosts().get(hostName).getUsername() + "/doc/aptx4869.pdf");
       // upload to /home/username/doc/aptx4869.doc
       sftpTemplate.upload(path.resolve("aptx4869.doc").toString(), "doc/aptx4869.doc");
       // upload to /home/username/aptx4869.docx
@@ -92,13 +101,13 @@ class MulitHostTests {
     }
   }
 
-  @Test
   void download() throws SftpException {
     Path path = Paths.get(downloadDir);
-    HostHolder.changeHost(HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null")), false);
+    String hostName = HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null"));
+    HostHolder.changeHost(hostName, false);
     try {
       // download /home/username/doc/aptx4869.pdf
-      sftpTemplate.download("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf", path.resolve("aptx4869.pdf").toString());
+      sftpTemplate.download("/home/" + clientProperties.getHosts().get(hostName).getUsername() + "/doc/aptx4869.pdf", path.resolve("aptx4869.pdf").toString());
       // download /home/username/doc/aptx4869.doc
       sftpTemplate.download("doc/aptx4869.doc", path.resolve("aptx4869.doc").toString());
       // download /home/username/aptx4869.pdf
@@ -115,12 +124,12 @@ class MulitHostTests {
     }
   }
 
-  @Test
   void exists() throws SftpException {
-    HostHolder.changeHost(HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null")), false);
+    String hostName = HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null"));
+    HostHolder.changeHost(hostName, false);
     try {
       // Test path /home/username/doc/aptx4869.pdf
-      System.out.println(sftpTemplate.exists("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf"));
+      System.out.println(sftpTemplate.exists("/home/" + clientProperties.getHosts().get(hostName).getUsername() + "/doc/aptx4869.pdf"));
       // Test path /home/username/doc/aptx4869.doc
       System.out.println(sftpTemplate.exists("doc/aptx4869.doc"));
       // Test path /home/username/aptx4869.docx
@@ -130,18 +139,18 @@ class MulitHostTests {
     }
   }
 
-  @Test
   void list() throws SftpException {
-    HostHolder.changeHost(HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null")), false);
+    String hostName = HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null"));
+    HostHolder.changeHost(hostName, false);
     try {
       // view /home/username/doc/aptx4869.pdf
-      sftpTemplate.list("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf");
+      sftpTemplate.list("/home/" + clientProperties.getHosts().get(hostName).getUsername() + "/doc/aptx4869.pdf");
       // view /home/username/doc/aptx4869.doc
       sftpTemplate.list("doc/aptx4869.doc");
       // view /home/username/aptx4869.docx
       sftpTemplate.list("aptx4869.docx");
       // view /home/username/doc
-      sftpTemplate.list("/home/" + clientProperties.getUsername() + "/doc");
+      sftpTemplate.list("/home/" + clientProperties.getHosts().get(hostName).getUsername() + "/doc");
       // view /home/username/doc
       sftpTemplate.list("doc");
     } finally {
@@ -149,18 +158,17 @@ class MulitHostTests {
     }
   }
 
-  @Test
   void execute() throws SftpException {
     HostHolder.changeHost(HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null")));
     String home = sftpTemplate.execute(ChannelSftp::getHome);
     System.out.println(home);
   }
 
-  @Test
   void executeWithoutResult() throws SftpException {
-    HostHolder.changeHost(HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null")), false);
+    String hostName = HostHolder.hostNames().stream().findFirst().orElseThrow(() -> new IllegalArgumentException("sftp.hosts must not be null"));
+    HostHolder.changeHost(hostName, false);
     try {
-      sftpTemplate.executeWithoutResult(channelSftp -> channelSftp.rm("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf"));
+      sftpTemplate.executeWithoutResult(channelSftp -> channelSftp.rm("/home/" + clientProperties.getHosts().get(hostName).getUsername() + "/doc/aptx4869.pdf"));
       sftpTemplate.executeWithoutResult(channelSftp -> channelSftp.rm("doc/aptx4869.doc"));
       sftpTemplate.executeWithoutResult(channelSftp -> channelSftp.rm("aptx4869.docx"));
     } finally {
