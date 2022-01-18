@@ -8,13 +8,13 @@ sftp:
       port: 22
       username: haibara
       password: aptx4869
-      timeout: 1000
+      connect-timeout: 1000
     host2:
       host: localhost
       port: 22
       username: haibara
       password: aptx4869
-      timeout: 1000
+      connect-timeout: 1000
   pool:
     min-idle: 1
     max-idle: 4
