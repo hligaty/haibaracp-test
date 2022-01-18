@@ -1,5 +1,5 @@
+# multi host
 sftp:
-  # unique host
   # Open when debugging, used to view jsch logs
   enabled-log: true
   hosts:
