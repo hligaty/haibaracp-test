@@ -5,11 +5,11 @@ import com.jcraft.jsch.SftpException;
 import io.github.hligaty.haibaracp.config.ClientProperties;
 import io.github.hligaty.haibaracp.core.SftpTemplate;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.annotation.Resource;
 import java.io.FileNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -17,9 +17,9 @@ import java.nio.file.Paths;
 @ActiveProfiles("unique")
 @SpringBootTest
 class UniqueHostTests {
-  @Resource
+  @Autowired
   private SftpTemplate sftpTemplate;
-  @Resource
+  @Autowired
   private ClientProperties clientProperties;
   @Value("${download}")
   private String downloadDir;
@@ -78,7 +78,7 @@ class UniqueHostTests {
     // Test path /home/username/aptx4869.docx
     System.out.println(sftpTemplate.exists("aptx4869.docx"));
   }
-
+  
   void list() throws SftpException {
     // view /home/username/doc/aptx4869.pdf
     sftpTemplate.list("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf");
