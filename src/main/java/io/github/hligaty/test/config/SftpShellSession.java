@@ -1,6 +1,5 @@
-package io.github.hligaty.config;
+package io.github.hligaty.test.config;
 
-import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.Session;
 import io.github.hligaty.haibaracp.config.ClientProperties;
@@ -9,18 +8,12 @@ import io.github.hligaty.haibaracp.core.SftpSession;
 /**
  * As an example only
  */
-public class SftpExecShellSession extends SftpSession {
+public class SftpShellSession extends SftpSession {
 
-    private ChannelExec channelExec;
-    
     private ChannelShell channelShell;
 
-    public SftpExecShellSession(ClientProperties clientProperties) {
+    public SftpShellSession(ClientProperties clientProperties) {
         super(clientProperties);
-    }
-
-    public ChannelExec channelExec() {
-        return channelExec;
     }
 
     public ChannelShell channelShell() {
@@ -29,18 +22,15 @@ public class SftpExecShellSession extends SftpSession {
 
     @Override
     protected boolean test() {
-        return super.test() && channelExec.isConnected() && channelShell.isConnected();
+        return super.test() && channelShell.isConnected();
     }
 
     @Override
     protected Session createJschSession(ClientProperties clientProperties) throws Exception {
         Session jschSession = super.createJschSession(clientProperties);
-        channelExec = (ChannelExec) jschSession().openChannel("exec");
-        channelExec.connect();
-        channelShell = (ChannelShell) jschSession().openChannel("shell");
+        channelShell = (ChannelShell) jschSession.openChannel("shell");
         channelShell.connect();
         return jschSession;
     }
-    
-    
+
 }

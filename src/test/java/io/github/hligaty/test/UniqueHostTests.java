@@ -4,42 +4,28 @@ import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.SftpException;
-import io.github.hligaty.config.SftpExecShellSession;
+import io.github.hligaty.haibaracp.core.ChannelSftpWrapper;
+import io.github.hligaty.test.config.SftpShellSession;
 import io.github.hligaty.haibaracp.config.ClientProperties;
-import io.github.hligaty.haibaracp.config.PoolProperties;
 import io.github.hligaty.haibaracp.core.SessionCallback;
 import io.github.hligaty.haibaracp.core.SessionCallbackWithoutResult;
 import io.github.hligaty.haibaracp.core.SessionException;
-import io.github.hligaty.haibaracp.core.SftpSessionFactory;
 import io.github.hligaty.haibaracp.core.SftpTemplate;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Bean;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-@ActiveProfiles("unique")
-@SpringBootTest
+@SpringBootTest(properties = "spring.config.location=classpath:/unique.yml")
 class UniqueHostTests {
-
-    @Bean
-    public SftpSessionFactory sftpSessionFactory(ClientProperties clientProperties, PoolProperties poolProperties) {
-        return new SftpSessionFactory(clientProperties, poolProperties) {
-            @Override
-            public SftpExecShellSession getSftpSession(ClientProperties clientProperties) {
-                return new SftpExecShellSession(clientProperties);
-            }
-        };
-    }
-
 
     @Resource
     private SftpTemplate sftpTemplate;
@@ -77,15 +63,16 @@ class UniqueHostTests {
         }
     }
 
-    void download() throws SftpException {
+    void download() throws SftpException, IOException {
         Path path = Paths.get(downloadDir);
+        Files.createDirectories(path);
         try {
             // download /home/username/doc/aptx4869.pdf
-            sftpTemplate.download("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf", path.resolve("aptx4869.pdf").toString());
+            sftpTemplate.download("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf", path.resolve("aptx4869.pdf").toAbsolutePath().toString());
             // download /home/username/doc/aptx4869.doc
-            sftpTemplate.download("doc/aptx4869.doc", path.resolve("aptx4869.doc").toString());
+            sftpTemplate.download("doc/aptx4869.doc", path.resolve("aptx4869.doc").toAbsolutePath().toString());
             // download /home/username/aptx4869.pdf
-            sftpTemplate.download("aptx4869.docx", path.resolve("aptx4869.docx").toString());
+            sftpTemplate.download("aptx4869.docx", path.resolve("aptx4869.docx").toAbsolutePath().toString());
         } catch (SessionException e) {
             if (e.getCause() instanceof SftpException sftpException) {
                 if (sftpException.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
@@ -121,10 +108,10 @@ class UniqueHostTests {
     }
 
     void execute() throws IOException {
-        try (OutputStream outputStream = Files.newOutputStream(Paths.get("/root/aptx4869.doc"))) {
+        try (OutputStream outputStream = Files.newOutputStream(Paths.get(downloadDir).resolve("aptx4869-new.doc"))) {
             sftpTemplate.executeWithoutResult(channelSftp -> {
                 try {
-                    channelSftp.get("aptx4869.doc", outputStream);
+                    channelSftp.get("doc/aptx4869.doc", outputStream);
                 } catch (SftpException e) {
                     throw new SessionException("Failed to get file", e);
                 }
@@ -147,17 +134,22 @@ class UniqueHostTests {
     }
 
     void executeSession() {
-        Boolean result = sftpTemplate.executeSession((SessionCallback<SftpExecShellSession, Boolean>) sftpSession -> {
-            ChannelExec channelExec = sftpSession.channelExec();
-            System.out.println("get ChannelExec :" + channelExec);
+        Boolean result = sftpTemplate.executeSession((SessionCallback<SftpShellSession, Boolean>) sftpSession -> {
+            ChannelShell channelShell = sftpSession.channelShell();
+            System.out.println("get ChannelShell status:" + channelShell.isConnected());
             return true;
         });
     }
 
     void executeSessionWithoutResult() {
-        sftpTemplate.executeSessionWithoutResult((SessionCallbackWithoutResult<SftpExecShellSession>) sftpSession -> {
-            ChannelShell channelShell = sftpSession.channelShell();
-            System.out.println("get ChannelShell :" + channelShell);
+        sftpTemplate.executeSessionWithoutResult((SessionCallbackWithoutResult<SftpShellSession>) sftpSession -> {
+            ChannelSftp channelSftp = sftpSession.channelSftp();
+            ChannelSftpWrapper channelSftpWrapper = new ChannelSftpWrapper(channelSftp);
+            try (InputStream inputStream = Files.newInputStream(Paths.get(downloadDir).resolve("aptx4869-new.doc").toAbsolutePath())) {
+                channelSftpWrapper.upload(inputStream, "doc/new/4869/aptx4869.pdf");
+            } catch (IOException e) {
+                throw new SessionException("Failed to get inputStream:", e);
+            }
         });
     }
 }
