@@ -152,15 +152,15 @@ class UniqueHostTests {
         assertEquals(Boolean.TRUE, result);
     }
 
-    void executeSessionWithoutResult() {
+    void executeSessionWithoutResult() throws IOException {
         String uploadPath = "doc/new/4869/aptx4869.pdf";
-        sftpTemplate.executeSessionWithoutResult(sftpSession -> {
-            ChannelSftp channelSftp = sftpSession.channelSftp();
-            ChannelSftpWrapper channelSftpWrapper = new ChannelSftpWrapper(channelSftp);
-            try (InputStream inputStream = Files.newInputStream(Paths.get(downloadDir).resolve("aptx4869-new.doc").toAbsolutePath())) {
+        try (InputStream inputStream = Files.newInputStream(Paths.get(downloadDir).resolve("aptx4869-new.doc").toAbsolutePath())) {
+            sftpTemplate.executeSessionWithoutResult(sftpSession -> {
+                ChannelSftp channelSftp = sftpSession.channelSftp();
+                ChannelSftpWrapper channelSftpWrapper = new ChannelSftpWrapper(channelSftp);
                 channelSftpWrapper.upload(inputStream, uploadPath);
-            }
-        });
+            });
+        }
         assertTrue(sftpTemplate.exists(uploadPath));
     }
 
