@@ -1,14 +1,10 @@
 package io.github.hligaty.test;
 
-import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.SftpException;
 import io.github.hligaty.haibaracp.core.ChannelSftpWrapper;
 import io.github.hligaty.test.config.SftpShellSession;
 import io.github.hligaty.haibaracp.config.ClientProperties;
-import io.github.hligaty.haibaracp.core.SessionCallback;
-import io.github.hligaty.haibaracp.core.SessionCallbackWithoutResult;
 import io.github.hligaty.haibaracp.core.SessionException;
 import io.github.hligaty.haibaracp.core.SftpTemplate;
 import jakarta.annotation.Resource;
@@ -23,19 +19,24 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(properties = "spring.config.location=classpath:/unique.yml")
 class UniqueHostTests {
 
     @Resource
-    private SftpTemplate sftpTemplate;
+    private SftpTemplate<SftpShellSession> sftpTemplate;
     @Resource
     private ClientProperties clientProperties;
     @Value("${download}")
     private String downloadDir;
 
     @Test
-    public void contextLoads() throws SftpException, IOException {
+    public void contextLoads() throws IOException {
         upload();
         download();
         exists();
@@ -63,7 +64,7 @@ class UniqueHostTests {
         }
     }
 
-    void download() throws SftpException, IOException {
+    void download() throws IOException {
         Path path = Paths.get(downloadDir);
         Files.createDirectories(path);
         try {
@@ -80,35 +81,41 @@ class UniqueHostTests {
                 } else if (sftpException.id == ChannelSftp.SSH_FX_FAILURE && sftpException.getCause() instanceof FileNotFoundException) {
                     System.out.println("local path not exists");
                 }
-                throw sftpException;
+                throw e;
             }
         }
     }
 
     void exists() {
         // Test path /home/username/doc/aptx4869.pdf
-        System.out.println(sftpTemplate.exists("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf"));
+        assertTrue(sftpTemplate.exists("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf"));
         // Test path /home/username/doc/aptx4869.doc
-        System.out.println(sftpTemplate.exists("doc/aptx4869.doc"));
+        assertTrue(sftpTemplate.exists("doc/aptx4869.doc"));
         // Test path /home/username/aptx4869.docx
-        System.out.println(sftpTemplate.exists("aptx4869.docx"));
+        assertTrue(sftpTemplate.exists("aptx4869.docx"));
     }
 
     void list() {
+        ChannelSftp.LsEntry[] lsEntries;
         // view /home/username/doc/aptx4869.pdf
-        sftpTemplate.list("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf");
+        lsEntries = sftpTemplate.list("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf");
+        assertTrue(lsEntries.length == 1 && "aptx4869.pdf".equals(lsEntries[0].getFilename()));
         // view /home/username/doc/aptx4869.doc
-        sftpTemplate.list("doc/aptx4869.doc");
+        lsEntries = sftpTemplate.list("doc/aptx4869.doc");
+        assertTrue(lsEntries.length == 1 && "aptx4869.doc".equals(lsEntries[0].getFilename()));
         // view /home/username/aptx4869.docx
-        sftpTemplate.list("aptx4869.docx");
+        lsEntries = sftpTemplate.list("aptx4869.docx");
+        assertTrue(lsEntries.length == 1 && "aptx4869.docx".equals(lsEntries[0].getFilename()));
         // view /home/username/doc
-        sftpTemplate.list("/home/" + clientProperties.getUsername() + "/doc");
-        // view /home/username/doc
-        sftpTemplate.list("doc");
+        assertEquals(
+                Arrays.toString(sftpTemplate.list("/home/" + clientProperties.getUsername() + "/doc")),
+                Arrays.toString(sftpTemplate.list("doc"))
+        );
     }
 
     void execute() throws IOException {
-        try (OutputStream outputStream = Files.newOutputStream(Paths.get(downloadDir).resolve("aptx4869-new.doc"))) {
+        Path downloadPath = Paths.get(downloadDir).resolve("aptx4869-new.doc");
+        try (OutputStream outputStream = Files.newOutputStream(downloadPath)) {
             sftpTemplate.executeWithoutResult(channelSftp -> {
                 try {
                     channelSftp.get("doc/aptx4869.doc", outputStream);
@@ -117,12 +124,19 @@ class UniqueHostTests {
                 }
             });
         }
+        assertTrue(Files.exists(downloadPath));
     }
 
     void executeWithoutResult() {
-        sftpTemplate.executeWithoutResult(channelSftp -> rm(channelSftp, "/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf"));
-        sftpTemplate.executeWithoutResult(channelSftp -> rm(channelSftp, "doc/aptx4869.doc"));
-        sftpTemplate.executeWithoutResult(channelSftp -> rm(channelSftp, "aptx4869.docx"));
+        String path = "/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf";
+        sftpTemplate.executeWithoutResult(channelSftp -> rm(channelSftp, path));
+        assertFalse(sftpTemplate.exists(path));
+        String path1 = "doc/aptx4869.doc";
+        sftpTemplate.executeWithoutResult(channelSftp -> rm(channelSftp, path1));
+        assertFalse(sftpTemplate.exists(path1));
+        String path2 = "aptx4869.docx";
+        sftpTemplate.executeWithoutResult(channelSftp -> rm(channelSftp, path2));
+        assertFalse(sftpTemplate.exists(path2));
     }
 
     static void rm(ChannelSftp channelSftp, String path) {
@@ -134,22 +148,20 @@ class UniqueHostTests {
     }
 
     void executeSession() {
-        Boolean result = sftpTemplate.executeSession((SessionCallback<SftpShellSession, Boolean>) sftpSession -> {
-            ChannelShell channelShell = sftpSession.channelShell();
-            System.out.println("get ChannelShell status:" + channelShell.isConnected());
-            return true;
-        });
+        Boolean result = sftpTemplate.executeSession(sftpSession -> sftpSession.channelShell().isConnected());
+        assertEquals(Boolean.TRUE, result);
     }
 
     void executeSessionWithoutResult() {
-        sftpTemplate.executeSessionWithoutResult((SessionCallbackWithoutResult<SftpShellSession>) sftpSession -> {
+        String uploadPath = "doc/new/4869/aptx4869.pdf";
+        sftpTemplate.executeSessionWithoutResult(sftpSession -> {
             ChannelSftp channelSftp = sftpSession.channelSftp();
             ChannelSftpWrapper channelSftpWrapper = new ChannelSftpWrapper(channelSftp);
             try (InputStream inputStream = Files.newInputStream(Paths.get(downloadDir).resolve("aptx4869-new.doc").toAbsolutePath())) {
-                channelSftpWrapper.upload(inputStream, "doc/new/4869/aptx4869.pdf");
-            } catch (IOException e) {
-                throw new SessionException("Failed to get inputStream:", e);
+                channelSftpWrapper.upload(inputStream, uploadPath);
             }
         });
+        assertTrue(sftpTemplate.exists(uploadPath));
     }
+
 }
