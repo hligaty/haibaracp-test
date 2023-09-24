@@ -7,8 +7,8 @@ import io.github.hligaty.test.config.SftpShellSession;
 import io.github.hligaty.haibaracp.config.ClientProperties;
 import io.github.hligaty.haibaracp.core.SessionException;
 import io.github.hligaty.haibaracp.core.SftpTemplate;
-import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -28,9 +29,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(properties = "spring.config.location=classpath:/unique.yml")
 class UniqueHostTests {
 
-    @Resource
+    @Autowired
     private SftpTemplate<SftpShellSession> sftpTemplate;
-    @Resource
+    @Autowired
     private ClientProperties clientProperties;
     @Value("${download}")
     private String downloadDir;
@@ -41,10 +42,10 @@ class UniqueHostTests {
         download();
         exists();
         list();
-        execute();
-        executeWithoutResult();
+        downloadByExecute();
+        rmUploadFileByExecuteWithoutResult();
         executeSession();
-        executeSessionWithoutResult();
+        uploadByExecuteSessionWithoutResult();
     }
 
     void upload() {
@@ -69,13 +70,23 @@ class UniqueHostTests {
         Files.createDirectories(path);
         try {
             // download /home/username/doc/aptx4869.pdf
-            sftpTemplate.download("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf", path.resolve("aptx4869.pdf").toAbsolutePath().toString());
+            Path downloadPath = path.resolve("aptx4869.pdf").toAbsolutePath();
+            Files.deleteIfExists(downloadPath);
+            sftpTemplate.download("/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf", downloadPath.toString());
+            assertTrue(Files.exists(downloadPath));
             // download /home/username/doc/aptx4869.doc
-            sftpTemplate.download("doc/aptx4869.doc", path.resolve("aptx4869.doc").toAbsolutePath().toString());
+            downloadPath = path.resolve("aptx4869.doc").toAbsolutePath();
+            Files.deleteIfExists(downloadPath);
+            sftpTemplate.download("doc/aptx4869.doc", downloadPath.toString());
+            assertTrue(Files.exists(downloadPath));
             // download /home/username/aptx4869.pdf
-            sftpTemplate.download("aptx4869.docx", path.resolve("aptx4869.docx").toAbsolutePath().toString());
+            downloadPath = path.resolve("aptx4869.docx").toAbsolutePath();
+            Files.deleteIfExists(downloadPath);
+            sftpTemplate.download("aptx4869.docx", downloadPath.toString());
+            assertTrue(Files.exists(downloadPath));
         } catch (SessionException e) {
-            if (e.getCause() instanceof SftpException sftpException) {
+            if (e.getCause() instanceof SftpException) {
+                SftpException sftpException = (SftpException) e.getCause();
                 if (sftpException.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
                     System.out.println("remote file not exists");
                 } else if (sftpException.id == ChannelSftp.SSH_FX_FAILURE && sftpException.getCause() instanceof FileNotFoundException) {
@@ -113,8 +124,9 @@ class UniqueHostTests {
         );
     }
 
-    void execute() throws IOException {
+    void downloadByExecute() throws IOException {
         Path downloadPath = Paths.get(downloadDir).resolve("aptx4869-new.doc");
+        Files.deleteIfExists(downloadPath);
         try (OutputStream outputStream = Files.newOutputStream(downloadPath)) {
             sftpTemplate.executeWithoutResult(channelSftp -> {
                 try {
@@ -127,7 +139,7 @@ class UniqueHostTests {
         assertTrue(Files.exists(downloadPath));
     }
 
-    void executeWithoutResult() {
+    void rmUploadFileByExecuteWithoutResult() {
         String path = "/home/" + clientProperties.getUsername() + "/doc/aptx4869.pdf";
         sftpTemplate.executeWithoutResult(channelSftp -> rm(channelSftp, path));
         assertFalse(sftpTemplate.exists(path));
@@ -152,7 +164,7 @@ class UniqueHostTests {
         assertEquals(Boolean.TRUE, result);
     }
 
-    void executeSessionWithoutResult() throws IOException {
+    void uploadByExecuteSessionWithoutResult() throws IOException {
         String uploadPath = "doc/new/4869/aptx4869.pdf";
         try (InputStream inputStream = Files.newInputStream(Paths.get(downloadDir).resolve("aptx4869-new.doc").toAbsolutePath())) {
             sftpTemplate.executeSessionWithoutResult(sftpSession -> {

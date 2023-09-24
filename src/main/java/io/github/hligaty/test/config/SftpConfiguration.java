@@ -3,6 +3,7 @@ package io.github.hligaty.test.config;
 import io.github.hligaty.haibaracp.config.ClientProperties;
 import io.github.hligaty.haibaracp.config.PoolProperties;
 import io.github.hligaty.haibaracp.core.SftpSessionFactory;
+import io.github.hligaty.haibaracp.core.SftpTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,6 +18,11 @@ public class SftpConfiguration {
                 return new SftpShellSession(clientProperties);
             }
         };
+    }
+    
+    @Bean
+    public SftpTemplate<SftpShellSession> sftpTemplate(SftpSessionFactory sftpSessionFactory) {
+        return new SftpTemplate<>(sftpSessionFactory);
     }
     
 }
