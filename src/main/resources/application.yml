@@ -3,7 +3,7 @@ sftp:
   # Open when debugging, used to view jsch logs
   enabled-log: true
   host: localhost
-  port: 22
+  port: 6789
   username: haibara
   password: aptx4869
   connect-timeout: 1000
@@ -13,3 +13,7 @@ sftp:
     max-active: 4
 # Download to the local file storage directory
 download: /download
+management:
+  endpoint:
+    health:
+      show-details: always
